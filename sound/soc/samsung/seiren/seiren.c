@@ -2164,24 +2164,49 @@ err:
 
 static void esa_fw_request_complete(const struct firmware *fw_sram, void *ctx)
 {
-	const struct firmware *fw_dram;
-	struct device *dev = ctx;
+	//const struct firmware *fw_dram;
+	//struct device *dev = ctx;
 
 	if (!fw_sram) {
 		esa_err("Failed to requset firmware[%s]\n", FW_SRAM_NAME);
 		return;
 	}
 
-	if (request_firmware(&fw_dram, FW_DRAM_NAME, dev)) {
+	/*if (request_firmware(&fw_dram, FW_DRAM_NAME, dev)) {
+		esa_err("Failed to requset firmware[%s]\n", FW_DRAM_NAME);
+		return;
+	}*/
+
+	//si.fwmem_loaded = true;
+	si.fw_sbin_size = fw_sram->size;
+	//si.fw_dbin_size = fw_dram->size;
+
+	memcpy(si.fwmem, fw_sram->data, si.fw_sbin_size);
+	//memcpy(si.fwmem + si.fw_sbin_size, fw_dram->data, si.fw_dbin_size);
+
+	/*esa_info("FW Loaded (SRAM = %d, DRAM = %d)\n",
+			si.fw_sbin_size, si.fw_dbin_size);*/
+
+	return;
+}
+
+static void esa_fw_request_complete_sdram(const struct firmware *fw_dram, void *ctx)
+{
+	//const struct firmware *fw_dram;
+	//struct device *dev = ctx;
+
+	if (!fw_dram) {
 		esa_err("Failed to requset firmware[%s]\n", FW_DRAM_NAME);
 		return;
 	}
 
+	
+
 	si.fwmem_loaded = true;
-	si.fw_sbin_size = fw_sram->size;
+	//si.fw_sbin_size = fw_sram->size;
 	si.fw_dbin_size = fw_dram->size;
 
-	memcpy(si.fwmem, fw_sram->data, si.fw_sbin_size);
+	//memcpy(si.fwmem, fw_sram->data, si.fw_sbin_size);
 	memcpy(si.fwmem + si.fw_sbin_size, fw_dram->data, si.fw_dbin_size);
 
 	esa_info("FW Loaded (SRAM = %d, DRAM = %d)\n",
@@ -2189,7 +2214,6 @@ static void esa_fw_request_complete(const struct firmware *fw_sram, void *ctx)
 
 	return;
 }
-
 static const char banner[] =
 	KERN_INFO "Exynos Seiren Audio driver, (c)2013 Samsung Electronics\n";
 
@@ -2317,6 +2341,24 @@ static int esa_probe(struct platform_device *pdev)
 		esa_err("Failed to claim CA5 irq\n");
 		goto err;
 	}
+	
+	ret = request_firmware_nowait(THIS_MODULE,
+				      FW_ACTION_HOTPLUG,
+				      FW_DRAM_NAME,
+				      dev,
+				      GFP_KERNEL,
+				      dev,
+				      esa_fw_request_complete_sdram);
+	if (ret) {
+		dev_err(dev, "could not load firmware\n");
+		goto err;
+	}
+
+	ret = request_irq(si.irq_ca5, esa_isr, 0, "lpass-ca5", 0);
+	if (ret < 0) {
+		esa_err("Failed to claim CA5 irq\n");
+		goto err;
+	}				      
 
 #ifdef CONFIG_PROC_FS
 	si.proc_file = proc_create("driver/seiren", 0, NULL, &esa_proc_fops);
