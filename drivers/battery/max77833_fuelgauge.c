@@ -1959,6 +1959,17 @@ static int max77833_fg_get_property(struct power_supply *psy,
 			pr_debug("%s: FilterCFG=0x%04X\n", __func__, status_data);
 			break;
 		}
+	case POWER_SUPPLY_PROP_STATUS:
+		{
+		/* TODO */
+		val->intval = 0;
+		break;
+	}
+		
+	case POWER_SUPPLY_PROP_CHARGE_FULL:
+		/* TODO */
+		val->intval = 0;
+		break;
 	default:
 		return -EINVAL;
 	}
